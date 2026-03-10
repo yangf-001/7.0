@@ -5,7 +5,8 @@ const AdultTagsViewRenderer = {
             'adultTags.library': this.renderLibrary.bind(this),
             'adultTags.excitement': this.renderExcitement.bind(this),
             'adultTags.scale': this.renderScale.bind(this),
-            'adultTags.tagAdd': this.renderTagAdd.bind(this)
+            'adultTags.tagAdd': this.renderTagAdd.bind(this),
+            'adultTags.import': this.renderImport.bind(this)
         };
         
         if (renders[key]) {
@@ -81,6 +82,7 @@ const AdultTagsViewRenderer = {
                     </div>
                     <div class="stats-actions">
                         <button class="btn btn-primary" onclick="AdultTagsView.showAddTag()">添加标签</button>
+                        <button class="btn btn-secondary" onclick="AdultTagsView.showImportTags()">导入标签</button>
                         <button class="btn btn-secondary" onclick="AdultTagsView.testRandomTags()">随机抽取</button>
                     </div>
                 </div>
@@ -192,6 +194,7 @@ const AdultTagsViewRenderer = {
                 <div class="empty">
                     <p>标签库为空</p>
                     <button class="btn btn-primary" onclick="AdultTagsView.showAddTag()">添加第一个标签</button>
+                    <button class="btn btn-secondary" onclick="AdultTagsView.showImportTags()" style="margin-top: 8px;">导入标签文件</button>
                 </div>
             `;
         }
@@ -217,6 +220,22 @@ const AdultTagsViewRenderer = {
                 <h3>阶段3 - 完全放开（${tagsByStage[3].length}个）</h3>
                 <div class="tag-list">
                     ${tagsByStage[3].map(t => `<span class="tag" title="权重:${t.权重}">${t.内容}</span>`).join('')}
+                </div>
+            </div>
+        `;
+    },
+
+    renderImport() {
+        return `
+            <div class="tag-import-form">
+                <h3>导入标签文件</h3>
+                <p>选择一个标签文件（.txt格式，包含JSON数据）</p>
+                <div class="form-group">
+                    <input type="file" id="tagFile" accept=".txt">
+                </div>
+                <div class="form-actions">
+                    <button class="btn btn-primary" onclick="AdultTagsView.importTags()">导入</button>
+                    <button class="btn btn-secondary" onclick="closeModal()">取消</button>
                 </div>
             </div>
         `;
@@ -344,6 +363,66 @@ const AdultTagsView = {
             plugin.saveSettings(settings);
             this.refresh();
         }
+    },
+
+    showImportTags() {
+        const modalTitle = document.getElementById('modalTitle');
+        const modalBody = document.getElementById('modalBody');
+        const modal = document.getElementById('modal');
+        
+        if (modalTitle && modalBody && modal) {
+            modalTitle.textContent = '导入标签文件';
+            modalBody.innerHTML = AdultTagsViewRenderer.render('adultTags.import');
+            modal.classList.add('active');
+        }
+    },
+
+    importTags() {
+        const fileInput = document.getElementById('tagFile');
+        if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+            alert('请选择一个标签文件');
+            return;
+        }
+        
+        const file = fileInput.files[0];
+        const reader = new FileReader();
+        
+        reader.onload = (e) => {
+            try {
+                const text = e.target.result;
+                const data = JSON.parse(text);
+                
+                let tags = [];
+                if (data.tags && Array.isArray(data.tags)) {
+                    tags = data.tags;
+                } else if (Array.isArray(data)) {
+                    tags = data;
+                }
+                
+                if (tags.length === 0) {
+                    alert('文件中没有标签数据');
+                    return;
+                }
+                
+                const plugin = window.AdultTagsPlugin;
+                if (plugin) {
+                    const importedCount = plugin.importTags(tags);
+                    
+                    alert(`成功导入 ${importedCount} 个标签（已过滤重复标签）`);
+                    closeModal();
+                    this.refresh();
+                }
+            } catch (error) {
+                alert('文件解析失败，请确保文件格式正确');
+                console.error('导入标签失败:', error);
+            }
+        };
+        
+        reader.onerror = () => {
+            alert('文件读取失败');
+        };
+        
+        reader.readAsText(file, 'UTF-8');
     }
 };
 

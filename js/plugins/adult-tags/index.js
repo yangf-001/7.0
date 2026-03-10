@@ -159,9 +159,32 @@ PluginSystem.register('adult-tags', {
 
     addTag(tag) {
         if (!this._tags) this._tags = [];
+        // 检查是否已存在相同内容的标签
+        const existingTag = this._tags.find(t => t.内容 === tag.内容);
+        if (existingTag) return false;
         tag.id = this._tags.length + 1;
         this._tags.push(tag);
         this._saveTagsToStorage();
+        return true;
+    },
+
+    importTags(tags) {
+        if (!this._tags) this._tags = [];
+        let importedCount = 0;
+        for (const tag of tags) {
+            if (tag.内容) {
+                const existingTag = this._tags.find(t => t.内容 === tag.内容);
+                if (!existingTag) {
+                    tag.id = this._tags.length + 1;
+                    this._tags.push(tag);
+                    importedCount++;
+                }
+            }
+        }
+        if (importedCount > 0) {
+            this._saveTagsToStorage();
+        }
+        return importedCount;
     },
 
     removeTag(tagId) {
